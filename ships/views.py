@@ -2,17 +2,12 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-import pandas as pd
-import io
 from .models import Ship
 from .serializers import (
-    ShipSerializer, ShipCreateUpdateSerializer, ShipListSerializer,
-    ShipImportSerializer, ShipImportDataSerializer
+    ShipSerializer, ShipCreateUpdateSerializer, ShipListSerializer
 )
 from users.models import OwnerProfile, CaptainProfile
 

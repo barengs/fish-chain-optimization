@@ -38,36 +38,3 @@ class FishingAreaListSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'code'
         )
-
-class FishingAreaImportSerializer(serializers.Serializer):
-    """
-    Serializer for importing fishing areas from Excel/CSV files.
-    
-    This serializer validates the import file data.
-    """
-    file = serializers.FileField(required=True, help_text="Excel or CSV file containing fishing area data")
-    
-    def validate_file(self, value):
-        """Validate that the uploaded file is either Excel or CSV"""
-        if not value:
-            raise serializers.ValidationError("No file uploaded")
-        
-        # Check file extension
-        filename = value.name.lower()
-        if not (filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv')):
-            raise serializers.ValidationError("File must be Excel (.xlsx, .xls) or CSV (.csv) format")
-        
-        return value
-
-class FishingAreaImportDataSerializer(serializers.ModelSerializer):
-    """
-    Serializer for validating individual fishing area data during import.
-    
-    This serializer is used to validate each row of data during import.
-    """
-    
-    class Meta:
-        model = FishingArea
-        fields = (
-            'name', 'code', 'description'
-        )

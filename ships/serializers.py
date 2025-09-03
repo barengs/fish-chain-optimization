@@ -101,39 +101,3 @@ class ShipListSerializer(serializers.ModelSerializer):
         if obj.captain:
             return f"{obj.captain.first_name} {obj.captain.last_name}"
         return None
-
-class ShipImportSerializer(serializers.Serializer):
-    """
-    Serializer for importing ships from Excel/CSV files.
-    
-    This serializer validates the import file data.
-    """
-    file = serializers.FileField(required=True, help_text="Excel or CSV file containing ship data")
-    
-    def validate_file(self, value):
-        """Validate that the uploaded file is either Excel or CSV"""
-        if not value:
-            raise serializers.ValidationError("No file uploaded")
-        
-        # Check file extension
-        filename = value.name.lower()
-        if not (filename.endswith('.xlsx') or filename.endswith('.xls') or filename.endswith('.csv')):
-            raise serializers.ValidationError("File must be Excel (.xlsx, .xls) or CSV (.csv) format")
-        
-        return value
-
-class ShipImportDataSerializer(serializers.ModelSerializer):
-    """
-    Serializer for validating individual ship data during import.
-    
-    This serializer is used to validate each row of data during import.
-    """
-    owner_name = serializers.CharField(max_length=200, help_text="Owner name (individual or company)")
-    captain_name = serializers.CharField(max_length=200, required=False, allow_blank=True, help_text="Captain name")
-    
-    class Meta:
-        model = Ship
-        fields = (
-            'name', 'registration_number', 'owner_name', 'captain_name',
-            'length', 'width', 'gross_tonnage', 'year_built', 'home_port', 'active'
-        )

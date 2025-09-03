@@ -1,9 +1,5 @@
 from django.contrib import admin
-from django.urls import path
-from django.http import HttpResponseRedirect
-from django.contrib import messages
 from .models import Ship
-from .views import ShipImportView
 
 @admin.register(Ship)
 class ShipAdmin(admin.ModelAdmin):
@@ -24,41 +20,3 @@ class ShipAdmin(admin.ModelAdmin):
         if obj.captain:
             return f"{obj.captain.first_name} {obj.captain.last_name}"
         return "No Captain"
-    
-    def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('import/', self.admin_site.admin_view(self.import_ships_view), name='ships_ship_import'),
-        ]
-        return custom_urls + urls
-    
-    def import_ships_view(self, request):
-        if request.method == 'POST':
-            # Handle file upload
-            uploaded_file = request.FILES.get('import_file')
-            if uploaded_file:
-                # Process the file using the existing import logic
-                import_view = ShipImportView()
-                import_view.request = request
-                import_view.format_kwarg = {}
-                
-                # Create a mock request with the file
-                mock_request = type('MockRequest', (), {
-                    'FILES': {'file': uploaded_file},
-                    'data': {}
-                })()
-                
-                response = import_view.post(mock_request)
-                
-                if response.status_code == 201:
-                    messages.success(request, f"Successfully imported ships: {response.data.get('imported_count', 0)}")
-                else:
-                    messages.error(request, f"Import failed: {response.data}")
-                
-                return HttpResponseRedirect("../")
-            else:
-                messages.error(request, "No file uploaded")
-        
-        # Since we don't need templates, redirect to the ships list
-        messages.info(request, "Use the API endpoint for importing ships.")
-        return HttpResponseRedirect("../")
