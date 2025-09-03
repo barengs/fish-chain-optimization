@@ -3,12 +3,20 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-from .serializers import CustomUserSerializer, CustomUserCreateSerializer, IndividualOwnerProfileSerializer, CompanyOwnerProfileSerializer, CaptainProfileSerializer, OwnerProfileSerializer
+from .serializers import CustomUserSerializer, CustomUserCreateSerializer, IndividualOwnerProfileSerializer, CompanyOwnerProfileSerializer, CaptainProfileSerializer, OwnerProfileSerializer, CustomTokenObtainPairSerializer
 from .models import CustomUser, OwnerProfile, OwnerType
 # Import role management models
 from role_managements.models import Role as ManagementRole
+
+@extend_schema(tags=['Authentication'])
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """
+    Custom view for obtaining JWT token pairs that includes user profile in the response.
+    """
+    serializer_class = CustomTokenObtainPairSerializer
 
 @extend_schema(tags=['Authentication'])
 class RegisterView(APIView):

@@ -1,8 +1,85 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomUser, OwnerProfile, CaptainProfile, OwnerType
 # Import the RoleSerializer from role_managements using string reference
 # from role_managements.serializers import RoleSerializer
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    """
+    Custom serializer for JWT token pair that includes user profile in the response.
+    """
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims here if needed
+        return token
+    
+    def validate(self, attrs):
+        data = super().validate(attrs)
+        
+        # Add user profile information to the response
+        # self.user is guaranteed to be set after super().validate(attrs)
+        user: CustomUser = self.user  # type: ignore
+        
+        # Initialize user data
+        user_data = {
+            'id': user.id,  # type: ignore
+            'username': user.username,  # type: ignore
+            'email': user.email,  # type: ignore
+            'role': None,
+            'profile': {}
+        }
+        
+        # Add role information if available
+        if user.role:  # type: ignore
+            # Lazy import to avoid circular import
+            from role_managements.serializers import RoleSerializer
+            user_data['role'] = RoleSerializer(user.role).data  # type: ignore
+        
+        # Get the user profile based on their role
+        user_profile = {}
+        
+        # Check if user has an owner profile
+        if hasattr(user, 'owner_profile') and user.owner_profile:  # type: ignore
+            owner_profile: OwnerProfile = user.owner_profile  # type: ignore
+            if owner_profile.type_owner == OwnerType.INDIVIDUAL:
+                user_profile['type'] = 'owner'
+                user_profile['owner_type'] = 'individual'
+                user_profile['first_name'] = owner_profile.first_name
+                user_profile['last_name'] = owner_profile.last_name
+                user_profile['id_number'] = owner_profile.id_number
+                user_profile['phone_number'] = owner_profile.phone_number
+                user_profile['address'] = owner_profile.address
+            elif owner_profile.type_owner == OwnerType.COMPANY:
+                user_profile['type'] = 'owner'
+                user_profile['owner_type'] = 'company'
+                user_profile['company_name'] = owner_profile.company_name
+                user_profile['company_registration_number'] = owner_profile.company_registration_number
+                user_profile['tax_number'] = owner_profile.tax_number
+                user_profile['contact_person'] = owner_profile.contact_person
+                user_profile['phone_number'] = owner_profile.phone_number
+                user_profile['address'] = owner_profile.address
+        
+        # Check if user has a captain profile
+        elif hasattr(user, 'captain_profile') and user.captain_profile:  # type: ignore
+            captain_profile: CaptainProfile = user.captain_profile  # type: ignore
+            user_profile['type'] = 'captain'
+            user_profile['first_name'] = captain_profile.first_name
+            user_profile['last_name'] = captain_profile.last_name
+            user_profile['license_number'] = captain_profile.license_number
+            user_profile['years_of_experience'] = captain_profile.years_of_experience
+            user_profile['phone_number'] = captain_profile.phone_number
+            user_profile['address'] = captain_profile.address
+        
+        # Add profile data
+        user_data['profile'] = user_profile
+        
+        # Add user data to response
+        data['user'] = user_data  # type: ignore
+        
+        return data
 
 class CustomUserSerializer(serializers.ModelSerializer):
     """
