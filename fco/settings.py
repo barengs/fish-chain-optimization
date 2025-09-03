@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'drf_spectacular',  # Add this for API documentation
     'users',
     'role_managements',
+    'ships',
+    'regions',
 ]
 
 MIDDLEWARE = [
