@@ -87,3 +87,106 @@ class ShipDeleteView(APIView):
         ship = get_object_or_404(Ship, pk=pk)
         ship.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(tags=['Ships'])
+class ShipImportView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(
+        summary="Import ships from Excel/CSV",
+        description="Import ship data from an Excel or CSV file using django-import-export",
+        request={
+            'multipart/form-data': {
+                'type': 'object',
+                'properties': {
+                    'file': {
+                        'type': 'string',
+                        'format': 'binary'
+                    }
+                }
+            }
+        },
+        responses={
+            201: {
+                'type': 'object',
+                'properties': {
+                    'message': {'type': 'string'},
+                    'imported': {'type': 'integer'},
+                    'updated': {'type': 'integer'},
+                    'skipped': {'type': 'integer'},
+                    'errors': {'type': 'array', 'items': {'type': 'string'}}
+                }
+            }
+        }
+    )
+    def post(self, request):
+        from .resources import ShipResource
+        from import_export.results import RowResult
+        from tablib import Dataset
+        
+        # Check if file is provided
+        if 'file' not in request.FILES:
+            return Response(
+                {"error": "No file provided"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            # Get the uploaded file
+            file = request.FILES['file']
+            
+            # Validate file type
+            if not (file.name.endswith('.xlsx') or file.name.endswith('.xls') or file.name.endswith('.csv')):
+                return Response(
+                    {"error": "Only Excel (.xlsx, .xls) or CSV (.csv) files are allowed"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Read the file content
+            dataset = Dataset()
+            
+            # Handle different file types
+            if file.name.endswith('.csv'):
+                # For CSV files, we need to decode the content
+                decoded_file = file.read().decode('utf-8')
+                dataset.csv = decoded_file
+            else:
+                # For Excel files, we can load directly
+                dataset.load(file.read())
+            
+            # Create resource instance
+            resource = ShipResource()
+            
+            # Import data
+            result = resource.import_data(
+                dataset,
+                dry_run=False,  # Actually import the data
+                raise_errors=False
+            )
+            
+            # Prepare response
+            response_data = {
+                "message": "Import completed successfully",
+                "imported": result.totals[RowResult.IMPORT_TYPE_NEW],
+                "updated": result.totals[RowResult.IMPORT_TYPE_UPDATE],
+                "skipped": result.totals[RowResult.IMPORT_TYPE_SKIP],
+                "errors": []
+            }
+            
+            # Add errors if any
+            if result.has_errors():
+                errors = []
+                for row_error in result.row_errors():
+                    row_index, error_list = row_error
+                    for error in error_list:
+                        errors.append(f"Row {row_index}: {str(error)}")
+                response_data["errors"] = errors
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response(
+                {"error": f"Failed to import ships: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )

@@ -9,4 +9,5 @@ urlpatterns = [
     path('create/', views.ShipCreateView.as_view(), name='ship_create'),
     path('<int:pk>/update/', views.ShipUpdateView.as_view(), name='ship_update'),
     path('<int:pk>/delete/', views.ShipDeleteView.as_view(), name='ship_delete'),
+    path('import/', views.ShipImportView.as_view(), name='ship_import'),
 ]
