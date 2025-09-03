@@ -1,9 +1,5 @@
 from django.contrib import admin
-from django.urls import path
-from django.http import HttpResponseRedirect
-from django.contrib import messages
 from .models import FishingArea
-from .views import FishingAreaImportView
 
 @admin.register(FishingArea)
 class FishingAreaAdmin(admin.ModelAdmin):
