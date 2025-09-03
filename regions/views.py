@@ -3,8 +3,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
+import pandas as pd
+import io
 from .models import FishingArea
 from .serializers import (
     FishingAreaSerializer, FishingAreaCreateUpdateSerializer, FishingAreaListSerializer
@@ -86,3 +89,39 @@ class FishingAreaDeleteView(APIView):
         fishing_area = get_object_or_404(FishingArea, pk=pk)
         fishing_area.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+@extend_schema(tags=['Fishing Areas'])
+class FishingAreaTemplateDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(
+        summary="Download fishing area import template",
+        description="Download an Excel template file for importing fishing areas data",
+        responses={
+            200: OpenApiTypes.BINARY
+        }
+    )
+    def get(self, request):
+        # Create a DataFrame with template data
+        template_data = {
+            'name': ['Example Fishing Area'],
+            'code': ['EX001'],
+            'description': ['Example description for fishing area']
+        }
+        
+        df = pd.DataFrame(template_data)
+        
+        # Create an Excel file in memory
+        buffer = io.BytesIO()
+        writer = pd.ExcelWriter(buffer, engine='openpyxl')
+        df.to_excel(writer, index=False, sheet_name='Fishing_Areas_Template')
+        writer.close()
+        
+        # Prepare the response
+        buffer.seek(0)
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="fishing_areas_import_template.xlsx"'
+        return response

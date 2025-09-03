@@ -3,8 +3,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
+import pandas as pd
+import io
 from .models import Ship
 from .serializers import (
     ShipSerializer, ShipCreateUpdateSerializer, ShipListSerializer
@@ -88,6 +91,48 @@ class ShipDeleteView(APIView):
         ship.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+@extend_schema(tags=['Ships'])
+class ShipTemplateDownloadView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(
+        summary="Download ship import template",
+        description="Download an Excel template file for importing ships data",
+        responses={
+            200: OpenApiTypes.BINARY
+        }
+    )
+    def get(self, request):
+        # Create a DataFrame with template data
+        template_data = {
+            'name': ['Example Ship Name'],
+            'registration_number': ['EX123456'],
+            'owner_name': ['John Doe'],  # Can be individual or company name
+            'captain_name': ['Captain Smith'],  # Optional
+            'length': [20.5],  # in meters
+            'width': [5.2],  # in meters
+            'gross_tonnage': [100.5],
+            'year_built': [2020],
+            'home_port': ['Port City'],
+            'active': [True]
+        }
+        
+        df = pd.DataFrame(template_data)
+        
+        # Create an Excel file in memory
+        buffer = io.BytesIO()
+        writer = pd.ExcelWriter(buffer, engine='openpyxl')
+        df.to_excel(writer, index=False, sheet_name='Ships_Template')
+        writer.close()
+        
+        # Prepare the response
+        buffer.seek(0)
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="ships_import_template.xlsx"'
+        return response
 
 @extend_schema(tags=['Ships'])
 class ShipImportView(APIView):
