@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'users',
     'role_managements',
     'ships',
+    'regions',
 ]
 
 MIDDLEWARE = [

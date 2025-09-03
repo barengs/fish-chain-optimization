@@ -32,6 +32,7 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('roles/', include('role_managements.urls')),
     path('ships/', include('ships.urls')),
+    path('regions/', include('regions.urls')),
     path('health/', health_check, name='health_check'),
     # DRF Spectacular documentation URLs
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
