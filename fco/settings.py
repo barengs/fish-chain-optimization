@@ -82,9 +82,9 @@ WSGI_APPLICATION = 'fco.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'fco',
-        'USER': 'root',
-        'PASSWORD': 'rahasia',
+        'NAME': 'umex1887_fco',
+        'USER': 'umex1887_fco',
+        'PASSWORD': 'K@mbing1',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
