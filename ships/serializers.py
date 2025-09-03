@@ -101,23 +101,3 @@ class ShipListSerializer(serializers.ModelSerializer):
         if obj.captain:
             return f"{obj.captain.first_name} {obj.captain.last_name}"
         return None
-
-class ShipImportSerializer(serializers.Serializer):
-    """
-    Serializer for importing ships from Excel/CSV files.
-    """
-    file = serializers.FileField(required=True, help_text="Excel or CSV file containing ship data")
-    
-    def validate_file(self, value):
-        """
-        Validate that the uploaded file is either Excel or CSV.
-        """
-        if not value:
-            raise serializers.ValidationError("No file uploaded")
-            
-        # Check file extension
-        file_name = value.name.lower()
-        if not (file_name.endswith('.xlsx') or file_name.endswith('.xls') or file_name.endswith('.csv')):
-            raise serializers.ValidationError("Only Excel (.xlsx, .xls) or CSV (.csv) files are allowed")
-            
-        return value
