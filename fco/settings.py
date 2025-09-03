@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-bb4o)o%k$0%d(dqie+7z314rz50f-w829g#u9c2t%c^-5+deez
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['api.fco.umediatama.com']
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -89,9 +89,9 @@ WSGI_APPLICATION = 'fco.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'umex1887_fco',
-        'USER': 'umex1887_fco',
-        'PASSWORD': 'K@mbing1',
+        'NAME': 'fco',
+        'USER': 'root',
+        'PASSWORD': 'rahasia',
         'HOST': 'localhost',
         'PORT': '3306',
         'OPTIONS': {
