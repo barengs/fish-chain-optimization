@@ -1,5 +1,8 @@
 from django.contrib import admin
 from django.urls import path
+from django.http import HttpResponse
+import io
+from openpyxl import Workbook
 from .models import FishingArea
 
 @admin.register(FishingArea)
@@ -17,27 +20,25 @@ class FishingAreaAdmin(admin.ModelAdmin):
         return custom_urls + urls
     
     def download_template_view(self, request):
-        from django.http import HttpResponse
-        import pandas as pd
-        import io
+        # Create a workbook and select the active worksheet
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Fishing_Areas_Template"
         
-        # Create a DataFrame with template data
-        template_data = {
-            'name': ['Example Fishing Area'],
-            'code': ['EX001'],
-            'description': ['Example description for fishing area']
-        }
+        # Add headers
+        headers = ['name', 'code', 'description']
+        ws.append(headers)
         
-        df = pd.DataFrame(template_data)
+        # Add sample data
+        sample_data = ['Example Fishing Area', 'EX001', 'Example description for fishing area']
+        ws.append(sample_data)
         
-        # Create an Excel file in memory
+        # Create an in-memory buffer
         buffer = io.BytesIO()
-        writer = pd.ExcelWriter(buffer, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Fishing_Areas_Template')
-        writer.close()
+        wb.save(buffer)
+        buffer.seek(0)
         
         # Prepare the response
-        buffer.seek(0)
         response = HttpResponse(
             buffer.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

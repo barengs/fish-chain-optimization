@@ -6,8 +6,8 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-import pandas as pd
 import io
+from openpyxl import Workbook
 from .models import FishingArea
 from .serializers import (
     FishingAreaSerializer, FishingAreaCreateUpdateSerializer, FishingAreaListSerializer
@@ -102,23 +102,25 @@ class FishingAreaTemplateDownloadView(APIView):
         }
     )
     def get(self, request):
-        # Create a DataFrame with template data
-        template_data = {
-            'name': ['Example Fishing Area'],
-            'code': ['EX001'],
-            'description': ['Example description for fishing area']
-        }
+        # Create a workbook and select the active worksheet
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Fishing_Areas_Template"
         
-        df = pd.DataFrame(template_data)
+        # Add headers
+        headers = ['name', 'code', 'description']
+        ws.append(headers)
         
-        # Create an Excel file in memory
+        # Add sample data
+        sample_data = ['Example Fishing Area', 'EX001', 'Example description for fishing area']
+        ws.append(sample_data)
+        
+        # Create an in-memory buffer
         buffer = io.BytesIO()
-        writer = pd.ExcelWriter(buffer, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Fishing_Areas_Template')
-        writer.close()
+        wb.save(buffer)
+        buffer.seek(0)
         
         # Prepare the response
-        buffer.seek(0)
         response = HttpResponse(
             buffer.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

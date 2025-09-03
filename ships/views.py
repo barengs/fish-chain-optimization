@@ -6,8 +6,8 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-import pandas as pd
 import io
+from openpyxl import Workbook
 from .models import Ship
 from .serializers import (
     ShipSerializer, ShipCreateUpdateSerializer, ShipListSerializer
@@ -103,30 +103,31 @@ class ShipTemplateDownloadView(APIView):
         }
     )
     def get(self, request):
-        # Create a DataFrame with template data
-        template_data = {
-            'name': ['Example Ship Name'],
-            'registration_number': ['EX123456'],
-            'owner_name': ['John Doe'],  # Can be individual or company name
-            'captain_name': ['Captain Smith'],  # Optional
-            'length': [20.5],  # in meters
-            'width': [5.2],  # in meters
-            'gross_tonnage': [100.5],
-            'year_built': [2020],
-            'home_port': ['Port City'],
-            'active': [True]
-        }
+        # Create a workbook and select the active worksheet
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Ships_Template"
         
-        df = pd.DataFrame(template_data)
+        # Add headers
+        headers = [
+            'name', 'registration_number', 'owner_name', 'captain_name',
+            'length', 'width', 'gross_tonnage', 'year_built', 'home_port', 'active'
+        ]
+        ws.append(headers)
         
-        # Create an Excel file in memory
+        # Add sample data
+        sample_data = [
+            'Example Ship Name', 'EX123456', 'John Doe', 'Captain Smith',
+            20.5, 5.2, 100.5, 2020, 'Port City', True
+        ]
+        ws.append(sample_data)
+        
+        # Create an in-memory buffer
         buffer = io.BytesIO()
-        writer = pd.ExcelWriter(buffer, engine='openpyxl')
-        df.to_excel(writer, index=False, sheet_name='Ships_Template')
-        writer.close()
+        wb.save(buffer)
+        buffer.seek(0)
         
         # Prepare the response
-        buffer.seek(0)
         response = HttpResponse(
             buffer.getvalue(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
