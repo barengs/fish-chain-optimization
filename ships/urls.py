@@ -10,4 +10,6 @@ urlpatterns = [
     path('<int:pk>/update/', views.ShipUpdateView.as_view(), name='ship_update'),
     path('<int:pk>/delete/', views.ShipDeleteView.as_view(), name='ship_delete'),
     path('template/', views.ShipTemplateDownloadView.as_view(), name='ship_template_download'),
+    path('import/', views.ShipImportView.as_view(), name='ship_import'),
+    path('export/', views.ShipExportView.as_view(), name='ship_export'),
 ]

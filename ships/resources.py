@@ -4,29 +4,32 @@ from import_export.widgets import ForeignKeyWidget
 from .models import Ship
 from users.models import OwnerProfile, CaptainProfile
 
-
 class ShipResource(resources.ModelResource):
-    owner = Field(
-        column_name='owner_id',
-        attribute='owner',
-        widget=ForeignKeyWidget(OwnerProfile, 'id')
-    )
-    captain = Field(
-        column_name='captain_id',
-        attribute='captain',
-        widget=ForeignKeyWidget(CaptainProfile, 'id')
-    )
-
+    # Define fields for export
+    owner_name = Field(attribute='owner', widget=ForeignKeyWidget(OwnerProfile, 'first_name'))
+    captain_name = Field(attribute='captain', widget=ForeignKeyWidget(CaptainProfile, 'first_name'))
+    
     class Meta:
         model = Ship
         fields = (
-            'id', 'name', 'registration_number', 'owner', 'captain',
-            'length', 'width', 'gross_tonnage', 'year_built', 'home_port', 'active'
+            'id', 'name', 'registration_number', 'owner_name', 'captain_name',
+            'length', 'width', 'gross_tonnage', 'year_built', 'home_port', 'active',
+            'created_at', 'updated_at'
         )
         export_order = fields
-        import_id_fields = ('registration_number',)
-        skip_unchanged = True
-        report_skipped = True
+        
+    def dehydrate_owner_name(self, ship):
+        """Return owner name based on owner type"""
+        if ship.owner.type_owner == 'individual':
+            return f"{ship.owner.first_name} {ship.owner.last_name}"
+        else:
+            return ship.owner.company_name
+    
+    def dehydrate_captain_name(self, ship):
+        """Return captain name"""
+        if ship.captain:
+            return f"{ship.captain.first_name} {ship.captain.last_name}"
+        return ""
 
     def before_import_row(self, row, **kwargs):
         """

@@ -10,4 +10,6 @@ urlpatterns = [
     path('<int:pk>/update/', views.FishingAreaUpdateView.as_view(), name='fishing_area_update'),
     path('<int:pk>/delete/', views.FishingAreaDeleteView.as_view(), name='fishing_area_delete'),
     path('template/', views.FishingAreaTemplateDownloadView.as_view(), name='fishing_area_template_download'),
+    path('import/', views.FishingAreaImportView.as_view(), name='fishing_area_import'),
+    path('export/', views.FishingAreaExportView.as_view(), name='fishing_area_export'),
 ]

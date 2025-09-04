@@ -2,16 +2,19 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, FileResponse
 from django.conf import settings
 import os
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
+from import_export.formats.base_formats import XLSX, CSV
 from .models import Ship
 from .serializers import (
     ShipSerializer, ShipCreateUpdateSerializer, ShipListSerializer
 )
+from .resources import ShipResource
 from users.models import OwnerProfile, CaptainProfile
 
 @extend_schema(tags=['Ships'])
@@ -121,18 +124,18 @@ class ShipTemplateDownloadView(APIView):
 @extend_schema(tags=['Ships'])
 class ShipImportView(APIView):
     permission_classes = [IsAuthenticated]
+    parser_classes = (MultiPartParser, FormParser)
     
     @extend_schema(
         summary="Import ships from Excel/CSV",
-        description="Import ship data from an Excel or CSV file using django-import-export",
+        description="Import multiple ships from an Excel or CSV file",
         request={
-            'multipart/form-data': {
-                'type': 'object',
-                'properties': {
-                    'file': {
-                        'type': 'string',
-                        'format': 'binary'
-                    }
+            'type': 'object',
+            'properties': {
+                'file': {
+                    'type': 'string',
+                    'format': 'binary',
+                    'description': 'Excel or CSV file containing ship data'
                 }
             }
         },
@@ -141,81 +144,82 @@ class ShipImportView(APIView):
                 'type': 'object',
                 'properties': {
                     'message': {'type': 'string'},
-                    'imported': {'type': 'integer'},
-                    'updated': {'type': 'integer'},
-                    'skipped': {'type': 'integer'},
-                    'errors': {'type': 'array', 'items': {'type': 'string'}}
+                    'imported_count': {'type': 'integer'}
                 }
             }
         }
     )
     def post(self, request):
-        from .resources import ShipResource
-        from import_export.results import RowResult
-        from tablib import Dataset
+        file = request.FILES.get('file')
+        if not file:
+            return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Check if file is provided
-        if 'file' not in request.FILES:
-            return Response(
-                {"error": "No file provided"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        # Determine file format
+        if file.name.endswith('.xlsx'):
+            format_class = XLSX
+        elif file.name.endswith('.csv'):
+            format_class = CSV
+        else:
+            return Response({'error': 'Unsupported file format. Please upload Excel (.xlsx) or CSV (.csv) files.'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
         
+        # Import data using django-import-export
         try:
-            # Get the uploaded file
-            file = request.FILES['file']
-            
-            # Validate file type
-            if not (file.name.endswith('.xlsx') or file.name.endswith('.xls') or file.name.endswith('.csv')):
-                return Response(
-                    {"error": "Only Excel (.xlsx, .xls) or CSV (.csv) files are allowed"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Read the file content
-            dataset = Dataset()
-            
-            # Handle different file types
-            if file.name.endswith('.csv'):
-                # For CSV files, we need to decode the content
-                decoded_file = file.read().decode('utf-8')
-                dataset.csv = decoded_file
-            else:
-                # For Excel files, we can load directly
-                dataset.load(file.read())
-            
-            # Create resource instance
             resource = ShipResource()
+            dataset = format_class().create_dataset(file.read())
+            result = resource.import_data(dataset, dry_run=False)
             
-            # Import data
-            result = resource.import_data(
-                dataset,
-                dry_run=False,  # Actually import the data
-                raise_errors=False
-            )
-            
-            # Prepare response
-            response_data = {
-                "message": "Import completed successfully",
-                "imported": result.totals[RowResult.IMPORT_TYPE_NEW],
-                "updated": result.totals[RowResult.IMPORT_TYPE_UPDATE],
-                "skipped": result.totals[RowResult.IMPORT_TYPE_SKIP],
-                "errors": []
-            }
-            
-            # Add errors if any
-            if result.has_errors():
-                errors = []
-                for row_error in result.row_errors():
-                    row_index, error_list = row_error
-                    for error in error_list:
-                        errors.append(f"Row {row_index}: {str(error)}")
-                response_data["errors"] = errors
-            
-            return Response(response_data, status=status.HTTP_201_CREATED)
+            return Response({
+                'message': f'Successfully imported {result.total_rows} ships',
+                'imported_count': result.total_rows
+            }, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            return Response(
-                {"error": f"Failed to import ships: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
+            return Response({'error': f'Failed to import ships: {str(e)}'}, 
+                          status=status.HTTP_400_BAD_REQUEST)
+
+@extend_schema(tags=['Ships'])
+class ShipExportView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    @extend_schema(
+        summary="Export ships to Excel/CSV",
+        description="Export all ships data to Excel or CSV format",
+        parameters=[
+            OpenApiParameter(
+                name='format',
+                description='Export format',
+                required=False,
+                type=str,
+                enum=['xlsx', 'csv'],
+                default='xlsx'
             )
+        ],
+        responses={
+            200: OpenApiTypes.BINARY
+        }
+    )
+    def get(self, request):
+        format_type = request.query_params.get('format', 'xlsx')
+        
+        # Export data using django-import-export
+        try:
+            resource = ShipResource()
+            dataset = resource.export()
+            
+            if format_type == 'csv':
+                export_data = dataset.csv
+                content_type = 'text/csv'
+                filename = 'ships_export.csv'
+            else:
+                export_data = dataset.xlsx
+                content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                filename = 'ships_export.xlsx'
+            
+            response = HttpResponse(export_data, content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+            
+        except Exception as e:
+            return Response({'error': f'Failed to export ships: {str(e)}'}, 
+                          status=status.HTTP_400_BAD_REQUEST)

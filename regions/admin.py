@@ -3,10 +3,13 @@ from django.urls import path
 from django.http import HttpResponse, FileResponse
 from django.conf import settings
 import os
+from import_export.admin import ImportExportModelAdmin
 from .models import FishingArea
+from .resources import FishingAreaResource
 
 @admin.register(FishingArea)
-class FishingAreaAdmin(admin.ModelAdmin):
+class FishingAreaAdmin(ImportExportModelAdmin):
+    resource_class = FishingAreaResource
     list_display = ('name', 'code', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('name', 'code')
