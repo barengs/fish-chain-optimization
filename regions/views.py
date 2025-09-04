@@ -3,11 +3,11 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
-from django.http import HttpResponse
+from django.http import HttpResponse, FileResponse
+from django.conf import settings
+import os
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-import io
-from openpyxl import Workbook
 from .models import FishingArea
 from .serializers import (
     FishingAreaSerializer, FishingAreaCreateUpdateSerializer, FishingAreaListSerializer
@@ -102,27 +102,16 @@ class FishingAreaTemplateDownloadView(APIView):
         }
     )
     def get(self, request):
-        # Create a workbook and select the active worksheet
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Fishing_Areas_Template"
+        # Define the path to the template file
+        template_path = os.path.join(settings.BASE_DIR, 'regions', 'templates', 'regions', 'fishing_areas_import_template.xlsx')
         
-        # Add headers
-        headers = ['name', 'code', 'description']
-        ws.append(headers)
+        # Check if the file exists
+        if not os.path.exists(template_path):
+            return Response({'error': 'Template file not found'}, status=status.HTTP_404_NOT_FOUND)
         
-        # Add sample data
-        sample_data = ['Example Fishing Area', 'EX001', 'Example description for fishing area']
-        ws.append(sample_data)
-        
-        # Create an in-memory buffer
-        buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-        
-        # Prepare the response
-        response = HttpResponse(
-            buffer.getvalue(),
+        # Serve the file
+        response = FileResponse(
+            open(template_path, 'rb'),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         response['Content-Disposition'] = 'attachment; filename="fishing_areas_import_template.xlsx"'
